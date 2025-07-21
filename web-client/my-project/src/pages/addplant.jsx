@@ -28,6 +28,31 @@ export default function AddPlant() {
                             placeholder="e.g., 7"
                         />
                     </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Last Watered</label>
+                        <input
+                            type="date"
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Sunlight</label>
+                        <select
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                        >
+                            <option value="">Select sunlight needs</option>
+                            <option value="Full Sun">Full Sun</option>
+                            <option value="Partial Sun">Partial Sun</option>
+                            <option value="Shade">Shade</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Next Watering Date</label>
+                        <input
+                            type="date"
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-green-500 focus:border-green-500"
+                        />
+                    </div>
                     <div className="flex justify-between mt-4">
                         <button
                             type="button"

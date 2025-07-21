@@ -27,6 +27,7 @@ export default function Sidebar() {
                             <FiFeather className="mr-2" />Add Plant
                         </Link>
                     </li>
+                    
                 </ul>
             </nav>
         </div>
