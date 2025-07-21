@@ -1,20 +1,84 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FiSearch, FiEdit, FiTrash, FiDroplet, FiHome } from "react-icons/fi";
-
-const plantData = [
-  { name: "Aloe Vera", species: "Succulent", lastWatered: "2025-07-17", nextWatering: "2025-07-21", sunlight: "Sunny" },
-  { name: "Snake Plant", species: "Evergreen", lastWatered: "2025-07-18", nextWatering: "2025-07-24", sunlight: "Indirect" },
-  { name: "Peace Lily", species: "Flowering", lastWatered: "2025-07-15", nextWatering: "2025-07-20", sunlight: "Shade" },
-];
 
 export default function Dashboard() {
   const [view, setView] = useState("dashboard");
+  const [plants, setPlants] = useState([]);
   const today = new Date();
 
-  const wateringReminders = plantData.filter((plant) => {
+  // ✅ Fetch plant data from backend
+  useEffect(() => {
+    fetchPlants();
+  }, []);
+
+  const fetchPlants = async () => {
+    try {
+      const res = await fetch("http://localhost:5000");
+      const data = await res.json();
+      setPlants(data);
+    } catch (err) {
+      console.error("Error fetching plants:", err);
+    }
+  };
+
+  const [searchTerm, setSearchTerm] = useState('');
+
+
+  // 💧 Filter for reminders
+  const wateringReminders = plants.filter((plant) => {
     const nextDate = new Date(plant.nextWatering);
     return nextDate <= today;
   });
+
+  const handleDelete = async (id) => {
+  if (!window.confirm("Are you sure you want to delete this plant?")) return;
+
+  try {
+    const res = await fetch(`http://localhost:5000/${id}`, {
+      method: "DELETE",
+    });
+
+    if (res.ok) {
+      setPlants(plants.filter((p) => p._id !== id));
+      alert("✅ Plant deleted");
+    } else {
+      alert("❌ Failed to delete");
+    }
+  } catch (err) {
+    console.error("Delete error:", err);
+    alert("❌ Server error");
+  }
+};
+  const [editingPlant, setEditingPlant] = useState(null);
+  const startEditing = (plant) => {
+    setEditingPlant(plant);
+  };
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`http://localhost:5000/${editingPlant._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingPlant),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setPlants((prev) =>
+          prev.map((p) => (p._id === updated._id ? updated : p))
+        );
+        setEditingPlant(null);
+        alert("✅ Plant updated!");
+      } else {
+        alert("❌ Update failed");
+      }
+    } catch (err) {
+      console.error("Update error:", err);
+      alert("❌ Server error while updating");
+    }
+  };
+
+
 
   return (
     <div className="flex flex-col items-center p-8 bg-white min-h-screen">
@@ -44,6 +108,8 @@ export default function Dashboard() {
             <input
               type="text"
               placeholder="Search plants..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1 p-2 border border-gray-300 rounded-l"
             />
             <button className="p-2 bg-green-500 text-white rounded-r">
@@ -61,30 +127,50 @@ export default function Dashboard() {
                   <th className="p-4 border">💧 Last Watered</th>
                   <th className="p-4 border">☀️ Sunlight</th>
                   <th className="p-4 border">📅 Next Watering</th>
+                  <th className="p-4 border">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {plantData.map((plant, index) => (
-                  <tr key={index}>
-                    <td className="p-4 border">{plant.name}</td>
-                    <td className="p-4 border">{plant.species}</td>
-                    <td className="p-4 border">{plant.lastWatered}</td>
-                    <td className="p-4 border">{plant.sunlight}</td>
-                    <td className="p-4 border">{plant.nextWatering}</td>
-                  </tr>
-                ))}
-              </tbody>
+  {plants
+  .filter((plant) =>
+    plant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    plant.species.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+  .map((plant, index) => (
+
+    <tr key={plant._id}>
+      <td className="p-4 border">{plant.name}</td>
+      <td className="p-4 border">{plant.species}</td>
+      <td className="p-4 border">{plant.lastWatered}</td>
+      <td className="p-4 border">{plant.sunlight}</td>
+      <td className="p-4 border">{plant.nextWatering}</td>
+      <td className="p-4 border">
+        <button
+          onClick={() => startEditing(plant)}
+          className="text-blue-600 hover:text-blue-800"
+        >
+          <FiEdit />
+        </button>
+        <button
+          onClick={() => handleDelete(plant._id)}
+          className="text-red-600 hover:text-red-800"
+        >
+          <FiTrash />
+        </button>
+      </td>
+    </tr>
+  ))}
+</tbody>
+
             </table>
 
             {/* Action Buttons */}
             <div className="flex justify-center gap-4 mt-6">
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                <FiEdit />
-                Edit
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
-                <FiTrash />
-                Delete
+              <button
+                onClick={() => setView("add")}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                ➕ Add New Plant
               </button>
             </div>
           </div>
@@ -114,6 +200,128 @@ export default function Dashboard() {
           )}
         </div>
       )}
+
+      {/* Add Plant View */}
+      {view === "add" && (
+        <div className="w-full max-w-md mt-10">
+          <h2 className="text-2xl font-bold mb-4">➕ Add New Plant</h2>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const formData = {
+                name: e.target.name.value,
+                species: e.target.species.value,
+                lastWatered: e.target.lastWatered.value,
+                nextWatering: e.target.nextWatering.value,
+                sunlight: e.target.sunlight.value,
+              };
+
+              try {
+                const response = await fetch("http://localhost:5000", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(formData),
+                });
+
+                if (response.ok) {
+                  alert("✅ Plant added successfully!");
+                  await fetchPlants(); // Refresh list
+                  setView("dashboard"); // Return to dashboard
+                } else {
+                  const error = await response.json();
+                  alert("❌ Error: " + error.message);
+                }
+              } catch (err) {
+                alert("❌ Failed to connect to server.");
+              }
+            }}
+            className="space-y-4"
+          >
+            <input name="name" placeholder="Plant Name" className="w-full p-2 border rounded" required />
+            <input name="species" placeholder="Species" className="w-full p-2 border rounded" required />
+            <input name="lastWatered" type="date" className="w-full p-2 border rounded" required />
+            <input name="nextWatering" type="date" className="w-full p-2 border rounded" required />
+            <select name="sunlight" className="w-full p-2 border rounded" required>
+              <option value="">Sunlight Requirement</option>
+              <option value="Sunny">Sunny</option>
+              <option value="Indirect">Indirect</option>
+              <option value="Shade">Shade</option>
+            </select>
+            <button type="submit" className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">
+              Add Plant
+            </button>
+          </form>
+        </div>
+      )}
+
+      {editingPlant && (
+  <div className="p-4 bg-gray-100 mt-6 rounded shadow">
+    <h3 className="text-lg font-bold mb-2">Edit Plant</h3>
+    <form onSubmit={handleUpdate}>
+      <input
+        type="text"
+        placeholder="Name"
+        value={editingPlant.name}
+        onChange={(e) =>
+          setEditingPlant({ ...editingPlant, name: e.target.value })
+        }
+        className="border p-2 rounded mb-2 w-full"
+      />
+      <input
+        type="text"
+        placeholder="Species"
+        value={editingPlant.species}
+        onChange={(e) =>
+          setEditingPlant({ ...editingPlant, species: e.target.value })
+        }
+        className="border p-2 rounded mb-2 w-full"
+      />
+      <input
+        type="text"
+        placeholder="Sunlight"
+        value={editingPlant.sunlight}
+        onChange={(e) =>
+          setEditingPlant({ ...editingPlant, sunlight: e.target.value })
+        }
+        className="border p-2 rounded mb-2 w-full"
+      />
+      <input
+        type="date"
+        placeholder="Last Watered"
+        value={editingPlant.lastWatered}
+        onChange={(e) =>
+          setEditingPlant({ ...editingPlant, lastWatered: e.target.value })
+        }
+        className="border p-2 rounded mb-2 w-full"
+      />
+      <input
+        type="date"
+        placeholder="Next Watering"
+        value={editingPlant.nextWatering}
+        onChange={(e) =>
+          setEditingPlant({ ...editingPlant, nextWatering: e.target.value })
+        }
+        className="border p-2 rounded mb-2 w-full"
+      />
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          className="px-4 py-2 bg-green-600 text-white rounded"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditingPlant(null)}
+          className="px-4 py-2 bg-gray-400 text-white rounded"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+)}
+
     </div>
   );
 }
